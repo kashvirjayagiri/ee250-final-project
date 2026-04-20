@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OccupiQ Dashboard</title>
+    <style>
+        :root {
+            --bg: #f7f2ea;
+            --panel: rgba(255, 252, 247, 0.84);
+            --panel-strong: #fffaf4;
+            --text: #251d18;
+            --muted: #7a6c61;
+            --line: rgba(64, 44, 26, 0.08);
+            --occupied-bg: #f6e4df;
+            --occupied-accent: #bc665b;
+            --vacant-bg: #edf4dc;
+            --vacant-accent: #739c35;
+            --amber-bg: #f7ecd5;
+            --amber-accent: #ba812f;
+            --chart-line: #6f68d5;
+            --chart-fill: rgba(111, 104, 213, 0.16);
+            --shadow: 0 18px 50px rgba(69, 47, 23, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Georgia, "Times New Roman", serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(121, 173, 57, 0.12), transparent 28rem),
+                radial-gradient(circle at top right, rgba(111, 104, 213, 0.08), transparent 26rem),
+                linear-gradient(180deg, #fbf8f2 0%, var(--bg) 100%);
+        }
+
+        .shell {
+            width: min(1180px, calc(100vw - 32px));
+            margin: 22px auto;
+            padding: 22px;
+            border: 1px solid rgba(85, 57, 28, 0.08);
+            border-radius: 26px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+        }
+
+        .topbar,
+        .metrics,
+        .floor-map,
+        .prediction-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .topbar {
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            margin-bottom: 26px;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 2.65rem);
+            font-weight: 600;
+            letter-spacing: -0.04em;
+        }
+
+        .brand p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 0.98rem;
+        }
+
+        .live-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: #edf4dc;
+            color: #6a8f2d;
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px rgba(115, 156, 53, 0.12);
+        }
+
+        .live-pill::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 0 8px rgba(115, 156, 53, 0.13);
+        }
+
+        .metrics {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            margin-bottom: 30px;
+        }
+
+        .metric-card,
+        .panel {
+            padding: 20px;
+            border-radius: 22px;
+            border: 1px solid rgba(85, 57, 28, 0.06);
+            background: var(--panel-strong);
+            box-shadow: 0 8px 28px rgba(69, 47, 23, 0.04);
+        }
+
+        .metric-label,
+        .section-label {
+            margin: 0 0 8px;
+            color: var(--muted);
+            font-size: 0.82rem;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            margin: 0;
+            font-size: clamp(2rem, 3vw, 2.8rem);
+            line-height: 0.95;
+        }
+
+        .metric-subtext {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 1rem;
+        }
+
+        .section-title {
+            margin: 0 0 16px;
+            font-size: 1.45rem;
+            letter-spacing: -0.02em;
+        }
+
+        .floor-map {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            margin-bottom: 28px;
+        }
+
+        .table-card {
+            position: relative;
+            overflow: hidden;
+            min-height: 152px;
+            padding: 18px;
+            border-radius: 22px;
+            border: 1px solid rgba(85, 57, 28, 0.06);
+            transition: transform 180ms ease, box-shadow 180ms ease;
+        }
+
+        .table-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 34px rgba(69, 47, 23, 0.08);
+        }
+
+        .table-card.occupied {
+            background: linear-gradient(180deg, rgba(255,255,255,0.55), transparent), var(--occupied-bg);
+            color: #7f463e;
+        }
+
+        .table-card.vacant {
+            background: linear-gradient(180deg, rgba(255,255,255,0.55), transparent), var(--vacant-bg);
+            color: #597b2e;
+        }
+
+        .table-card .table-name {
+            margin: 0 0 10px;
+            font-size: 1.4rem;
+        }
+
+        .table-card .reading {
+            margin: 0;
+            font-size: 1rem;
+            opacity: 0.86;
+        }
+
+        .table-card .status {
+            margin: 14px 0 0;
+            font-size: 1.16rem;
+            font-weight: 700;
+        }
+
+        .table-card .sound-tag {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.58);
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .chart-panel {
+            margin-bottom: 28px;
+        }
+
+        .chart-wrap {
+            position: relative;
+            border-radius: 24px;
+            padding: 16px 18px 14px;
+            background:
+                linear-gradient(180deg, rgba(111, 104, 213, 0.04), rgba(111, 104, 213, 0.01)),
+                var(--panel-strong);
+            overflow: hidden;
+        }
+
+        .chart-grid line {
+            stroke: rgba(37, 29, 24, 0.08);
+            stroke-width: 1;
+        }
+
+        .chart-grid text,
+        .axis-row span {
+            fill: var(--muted);
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .axis-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 10px;
+            padding-left: 48px;
+        }
+
+        .prediction-grid {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+
+        .prediction-card {
+            padding: 10px;
+            border-radius: 18px;
+            border: 1px solid rgba(85, 57, 28, 0.06);
+            background: var(--panel-strong);
+        }
+
+        .prediction-bar {
+            height: 92px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.65), transparent), var(--vacant-bg);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .prediction-fill {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 10px;
+            transition: height 240ms ease;
+        }
+
+        .prediction-time {
+            margin: 12px 0 4px;
+            font-size: 1rem;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .prediction-value {
+            margin: 0;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .empty-state {
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px dashed rgba(85, 57, 28, 0.18);
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.42);
+        }
+
+        @media (max-width: 920px) {
+            .metrics,
+            .floor-map,
+            .prediction-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .shell {
+                width: min(100vw - 18px, 100%);
+                margin: 10px auto;
+                padding: 16px;
+            }
+
+            .topbar {
+                grid-template-columns: 1fr;
+            }
+
+            .axis-row {
+                padding-left: 12px;
+                font-size: 0.75rem;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <div class="brand">
+                <h1>OccupiQ</h1>
+                <p>Cafe floor live dashboard</p>
+            </div>
+            <div class="live-pill">Live</div>
+        </header>
+
+        <section class="metrics">
+            <article class="metric-card">
+                <p class="metric-label">Tables occupied</p>
+                <h2 class="metric-value" id="occupiedMetric">0 / 0</h2>
+                <p class="metric-subtext" id="occupancyPercent">Waiting for data</p>
+            </article>
+            <article class="metric-card">
+                <p class="metric-label">Sound level</p>
+                <h2 class="metric-value" id="soundMetric">--</h2>
+                <p class="metric-subtext" id="soundLabel">No sound history yet</p>
+            </article>
+            <article class="metric-card">
+                <p class="metric-label">Last updated</p>
+                <h2 class="metric-value" id="updatedMetric">--</h2>
+                <p class="metric-subtext">Polling every 2s with live refresh</p>
+            </article>
+        </section>
+
+        <section class="panel">
+            <p class="section-label">Floor map</p>
+            <h3 class="section-title">Live table states</h3>
+            <div class="floor-map" id="floorMap"></div>
+        </section>
+
+        <section class="panel chart-panel">
+            <p class="section-label">Sound level</p>
+            <h3 class="section-title">Last 30 minutes</h3>
+            <div class="chart-wrap">
+                <svg id="soundChart" viewBox="0 0 1080 360" preserveAspectRatio="none" aria-label="Sound history chart"></svg>
+                <div class="axis-row" id="chartTimes"></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <p class="section-label">Predicted busyness</p>
+            <h3 class="section-title">Next 6 hours</h3>
+            <div class="prediction-grid" id="predictionGrid"></div>
+        </section>
+    </main>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+    <script>
+        const occupiedMetric = document.getElementById("occupiedMetric");
+        const occupancyPercent = document.getElementById("occupancyPercent");
+        const soundMetric = document.getElementById("soundMetric");
+        const soundLabel = document.getElementById("soundLabel");
+        const updatedMetric = document.getElementById("updatedMetric");
+        const floorMap = document.getElementById("floorMap");
+        const soundChart = document.getElementById("soundChart");
+        const chartTimes = document.getElementById("chartTimes");
+        const predictionGrid = document.getElementById("predictionGrid");
+
+        const SOUND_CHART_HEIGHT = 360;
+        const SOUND_CHART_WIDTH = 1080;
+        const CHART_PADDING = { top: 18, right: 18, bottom: 48, left: 64 };
+
+        function formatTableName(tableId) {
+            return String(tableId)
+                .replace(/[_-]+/g, " ")
+                .replace(/\b\w/g, (char) => char.toUpperCase());
+        }
+
+        function formatDistance(value) {
+            if (value === null || value === undefined || Number.isNaN(Number(value))) {
+                return "No distance data";
+            }
+            return `${Number(value).toFixed(1)} cm`;
+        }
+
+        function formatTimeLabel(isoString) {
+            const date = new Date(isoString);
+            if (Number.isNaN(date.getTime())) {
+                return "--";
+            }
+            return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        }
+
+        function formatRelativeTime(isoString) {
+            const date = new Date(isoString);
+            if (Number.isNaN(date.getTime())) {
+                return "--";
+            }
+
+            const diffSeconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+            if (diffSeconds < 5) {
+                return "just now";
+            }
+            if (diffSeconds < 60) {
+                return `${diffSeconds}s ago`;
+            }
+            if (diffSeconds < 3600) {
+                return `${Math.round(diffSeconds / 60)}m ago`;
+            }
+            return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        }
+
+        function soundActivityLabel(value) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return "No sound history yet";
+            }
+            if (value <= 1) {
+                return value >= 0.5 ? "Motion or chatter detected" : "Quiet sensor state";
+            }
+            if (value < 35) {
+                return "Quiet cafe";
+            }
+            if (value < 55) {
+                return "Moderate activity";
+            }
+            return "Busy and loud";
+        }
+
+        function aggregateSoundPoints(history) {
+            const buckets = new Map();
+
+            history.forEach((entry) => {
+                const date = new Date(entry.timestamp);
+                if (Number.isNaN(date.getTime())) {
+                    return;
+                }
+
+                const minuteKey = new Date(date);
+                minuteKey.setSeconds(0, 0);
+                const bucketKey = minuteKey.toISOString();
+                const bucket = buckets.get(bucketKey) || { total: 0, count: 0, timestamp: bucketKey };
+                const soundValue = Number(entry.sound);
+
+                if (!Number.isNaN(soundValue)) {
+                    bucket.total += soundValue;
+                    bucket.count += 1;
+                    buckets.set(bucketKey, bucket);
+                }
+            });
+
+            return Array.from(buckets.values())
+                .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+                .map((bucket) => ({
+                    timestamp: bucket.timestamp,
+                    sound: bucket.total / bucket.count,
+                }));
+        }
+
+        function renderMetrics(current, history) {
+            const occupiedCount = current.filter((entry) => entry.occupied).length;
+            const totalTables = current.length;
+            const occupancy = totalTables ? Math.round((occupiedCount / totalTables) * 100) : 0;
+
+            occupiedMetric.textContent = `${occupiedCount} / ${totalTables}`;
+            occupancyPercent.textContent = totalTables ? `${occupancy}% occupancy` : "Waiting for table data";
+
+            const soundValues = history
+                .map((entry) => Number(entry.sound))
+                .filter((value) => !Number.isNaN(value));
+            const averageSound = soundValues.length
+                ? soundValues.reduce((sum, value) => sum + value, 0) / soundValues.length
+                : null;
+
+            if (averageSound === null) {
+                soundMetric.textContent = "--";
+            } else if (averageSound > 1) {
+                soundMetric.textContent = `${Math.round(averageSound)} dB`;
+            } else {
+                soundMetric.textContent = averageSound.toFixed(2);
+            }
+            soundLabel.textContent = soundActivityLabel(averageSound);
+
+            const timestamps = current.map((entry) => entry.timestamp).filter(Boolean).sort();
+            updatedMetric.textContent = timestamps.length ? formatRelativeTime(timestamps[timestamps.length - 1]) : "--";
+        }
+
+        function renderFloorMap(current) {
+            if (!current.length) {
+                floorMap.innerHTML = '<div class="empty-state">No table updates yet. Start the sensor pipeline and this view will populate automatically.</div>';
+                return;
+            }
+
+            floorMap.innerHTML = current.map((entry) => {
+                const occupiedClass = entry.occupied ? "occupied" : "vacant";
+                const statusText = entry.occupied ? "Occupied" : "Vacant";
+                const soundValue = entry.sound === null || entry.sound === undefined ? "No sound" : `Sound ${entry.sound}`;
+                return `
+                    <article class="table-card ${occupiedClass}">
+                        <span class="sound-tag">${soundValue}</span>
+                        <h4 class="table-name">${formatTableName(entry.table_id)}</h4>
+                        <p class="reading">${formatDistance(entry.distance_cm)}</p>
+                        <p class="reading">Updated ${formatRelativeTime(entry.timestamp)}</p>
+                        <p class="status">${statusText}</p>
+                    </article>
+                `;
+            }).join("");
+        }
+
+        function buildAreaPath(points, minValue, maxValue) {
+            if (!points.length) {
+                return "";
+            }
+
+            const innerWidth = SOUND_CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
+            const innerHeight = SOUND_CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+            const range = maxValue - minValue || 1;
+
+            const coordinates = points.map((point, index) => {
+                const x = CHART_PADDING.left + (index / Math.max(points.length - 1, 1)) * innerWidth;
+                const y = CHART_PADDING.top + ((maxValue - point.sound) / range) * innerHeight;
+                return { x, y };
+            });
+
+            const linePath = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+            const areaPath = `${linePath} L ${coordinates[coordinates.length - 1].x} ${SOUND_CHART_HEIGHT - CHART_PADDING.bottom} L ${coordinates[0].x} ${SOUND_CHART_HEIGHT - CHART_PADDING.bottom} Z`;
+            return { linePath, areaPath, coordinates };
+        }
+
+        function renderSoundChart(history) {
+            const points = aggregateSoundPoints(history);
+
+            if (!points.length) {
+                soundChart.innerHTML = "";
+                chartTimes.innerHTML = '<span>No recent sound data</span>';
+                return;
+            }
+
+            const values = points.map((point) => point.sound);
+            let minValue = Math.min(...values);
+            let maxValue = Math.max(...values);
+
+            if (maxValue === minValue) {
+                maxValue += 1;
+                minValue = Math.max(0, minValue - 1);
+            }
+
+            const roundedMin = Math.max(0, Math.floor(minValue / 10) * 10);
+            const roundedMax = Math.ceil(maxValue / 10) * 10 || 10;
+            const step = Math.max(1, Math.round((roundedMax - roundedMin) / 5));
+            const { linePath, areaPath } = buildAreaPath(points, roundedMin, roundedMax);
+            const yTicks = Array.from({ length: 6 }, (_, index) => roundedMin + step * index);
+
+            soundChart.innerHTML = `
+                <g class="chart-grid">
+                    ${yTicks.map((tick) => {
+                        const ratio = (tick - roundedMin) / Math.max(roundedMax - roundedMin, 1);
+                        const y = SOUND_CHART_HEIGHT - CHART_PADDING.bottom - ratio * (SOUND_CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom);
+                        const suffix = roundedMax > 5 ? " dB" : "";
+                        return `
+                            <line x1="${CHART_PADDING.left}" y1="${y}" x2="${SOUND_CHART_WIDTH - CHART_PADDING.right}" y2="${y}"></line>
+                            <text x="8" y="${y + 5}">${tick}${suffix}</text>
+                        `;
+                    }).join("")}
+                </g>
+                <path d="${areaPath}" fill="var(--chart-fill)"></path>
+                <path d="${linePath}" fill="none" stroke="var(--chart-line)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+            `;
+
+            const tickIndexes = [0, 1, 2, 3, 4, 5].map((index) => Math.min(points.length - 1, Math.round((points.length - 1) * (index / 5))));
+            chartTimes.innerHTML = tickIndexes
+                .map((index) => `<span>${formatTimeLabel(points[index].timestamp)}</span>`)
+                .join("");
+        }
+
+        function predictionTone(probability) {
+            if (probability < 0.45) {
+                return { background: "var(--vacant-bg)", fill: "var(--vacant-accent)" };
+            }
+            if (probability < 0.75) {
+                return { background: "var(--amber-bg)", fill: "var(--amber-accent)" };
+            }
+            return { background: "var(--occupied-bg)", fill: "#d4554d" };
+        }
+
+        function aggregatePredictions(predictions) {
+            const grouped = new Map();
+            predictions.forEach((entry) => {
+                const bucket = grouped.get(entry.timestamp) || { total: 0, count: 0, timestamp: entry.timestamp };
+                const probability = Number(entry.occupied_probability);
+                if (!Number.isNaN(probability)) {
+                    bucket.total += probability;
+                    bucket.count += 1;
+                    grouped.set(entry.timestamp, bucket);
+                }
+            });
+
+            return Array.from(grouped.values())
+                .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+                .slice(0, 6)
+                .map((entry) => ({
+                    timestamp: entry.timestamp,
+                    probability: entry.total / entry.count,
+                }));
+        }
+
+        function renderPredictions(predictions) {
+            const aggregated = aggregatePredictions(predictions);
+
+            if (!aggregated.length) {
+                predictionGrid.innerHTML = '<div class="empty-state">Prediction cards will appear here once the server has some occupancy history to model.</div>';
+                return;
+            }
+
+            predictionGrid.innerHTML = aggregated.map((entry) => {
+                const probability = Math.max(0, Math.min(entry.probability, 1));
+                const tone = predictionTone(probability);
+                return `
+                    <article class="prediction-card">
+                        <div class="prediction-bar" style="background:${tone.background}">
+                            <div class="prediction-fill" style="height:${Math.round(probability * 100)}%; background:${tone.fill}"></div>
+                        </div>
+                        <p class="prediction-time">${formatTimeLabel(entry.timestamp)}</p>
+                        <p class="prediction-value">${Math.round(probability * 100)}%</p>
+                    </article>
+                `;
+            }).join("");
+        }
+
+        async function fetchJson(url) {
+            const response = await fetch(url, { cache: "no-store" });
+            if (!response.ok) {
+                throw new Error(`Request failed for ${url}: ${response.status}`);
+            }
+            return response.json();
+        }
+
+        async function refreshDashboard() {
+            try {
+                const [current, history, predictions] = await Promise.all([
+                    fetchJson("/api/current"),
+                    fetchJson("/api/sound_history"),
+                    fetchJson("/api/predict/next6"),
+                ]);
+
+                renderMetrics(current, history);
+                renderFloorMap(current);
+                renderSoundChart(history);
+                renderPredictions(predictions);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function setupLiveUpdates() {
+            if (window.io) {
+                const socket = window.io();
+                socket.on("initial_state", refreshDashboard);
+                socket.on("occupancy_update", refreshDashboard);
+                socket.on("connect_error", () => {
+                    console.warn("Socket.IO unavailable, continuing with polling only.");
+                });
+            }
+        }
+
+        refreshDashboard();
+        setupLiveUpdates();
+        window.setInterval(refreshDashboard, 2000);
+    </script>
+</body>
+</html>
