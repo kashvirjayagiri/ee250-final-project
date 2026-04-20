@@ -197,86 +197,87 @@ def fetch_sound_history_last_30_minutes() -> List[Dict[str, Any]]:
     ]
 
 
-def fetch_recent_events(hours: int = 24) -> List[sqlite3.Row]:
-    """Return recent events used by the lightweight prediction endpoint."""
-    cutoff = (utc_now() - timedelta(hours=hours)).isoformat()
-
-    with db_lock:
-        connection = get_db_connection()
-        rows = connection.execute(
-            """
-            SELECT table_id, occupied, sound, distance_cm, timestamp
-            FROM occupancy_events
-            WHERE timestamp >= ?
-            ORDER BY timestamp ASC
-            """,
-            (cutoff,),
-        ).fetchall()
-        connection.close()
-
-    return rows
-
-
-def build_next_6_hour_predictions() -> List[Dict[str, Any]]:
-    """
-    Build simple hour-by-hour predictions from recent data.
-
-    This acts as a lightweight baseline model until a separate trained model is
-    added to the project.
-    """
-    recent_rows = fetch_recent_events(hours=24)
-    latest_states = {row["table_id"]: row for row in fetch_latest_state_by_table()}
-    table_ids = sorted({row["table_id"] for row in recent_rows} | set(latest_states.keys()))
-
-    if not table_ids:
-        return []
-
-    occupancy_by_table_hour: Dict[str, Dict[int, List[int]]] = defaultdict(lambda: defaultdict(list))
-    sound_by_table_hour: Dict[str, Dict[int, List[float]]] = defaultdict(lambda: defaultdict(list))
-
-    for row in recent_rows:
-        timestamp = parse_timestamp(row["timestamp"])
-        occupancy_by_table_hour[row["table_id"]][timestamp.hour].append(int(row["occupied"]))
-        if row["sound"] is not None:
-            sound_by_table_hour[row["table_id"]][timestamp.hour].append(float(row["sound"]))
-
-    predictions: List[Dict[str, Any]] = []
-    current_time = utc_now().replace(minute=0, second=0, microsecond=0)
-
-    for hour_offset in range(1, 7):
-        prediction_time = current_time + timedelta(hours=hour_offset)
-        prediction_hour = prediction_time.hour
-
-        for table_id in table_ids:
-            latest_state = latest_states.get(table_id)
-            hour_occupancy = occupancy_by_table_hour[table_id].get(prediction_hour, [])
-            hour_sound = sound_by_table_hour[table_id].get(prediction_hour, [])
-
-            if hour_occupancy:
-                occupancy_probability = sum(hour_occupancy) / len(hour_occupancy)
-            elif latest_state is not None:
-                occupancy_probability = 1.0 if latest_state["occupied"] else 0.0
-            else:
-                occupancy_probability = 0.0
-
-            if hour_sound:
-                predicted_sound = sum(hour_sound) / len(hour_sound)
-            elif latest_state is not None and latest_state["sound"] is not None:
-                predicted_sound = float(latest_state["sound"])
-            else:
-                predicted_sound = 0.0
-
-            predictions.append(
-                {
-                    "table_id": table_id,
-                    "timestamp": prediction_time.isoformat(),
-                    "occupied_probability": round(occupancy_probability, 3),
-                    "predicted_occupied": occupancy_probability >= 0.5,
-                    "predicted_sound": round(predicted_sound, 2),
-                }
-            )
-
-    return predictions
+# ML pipeline removed for this project.
+# def fetch_recent_events(hours: int = 24) -> List[sqlite3.Row]:
+#     """Return recent events used by the lightweight prediction endpoint."""
+#     cutoff = (utc_now() - timedelta(hours=hours)).isoformat()
+#
+#     with db_lock:
+#         connection = get_db_connection()
+#         rows = connection.execute(
+#             """
+#             SELECT table_id, occupied, sound, distance_cm, timestamp
+#             FROM occupancy_events
+#             WHERE timestamp >= ?
+#             ORDER BY timestamp ASC
+#             """,
+#             (cutoff,),
+#         ).fetchall()
+#         connection.close()
+#
+#     return rows
+#
+#
+# def build_next_6_hour_predictions() -> List[Dict[str, Any]]:
+#     """
+#     Build simple hour-by-hour predictions from recent data.
+#
+#     This acts as a lightweight baseline model until a separate trained model is
+#     added to the project.
+#     """
+#     recent_rows = fetch_recent_events(hours=24)
+#     latest_states = {row["table_id"]: row for row in fetch_latest_state_by_table()}
+#     table_ids = sorted({row["table_id"] for row in recent_rows} | set(latest_states.keys()))
+#
+#     if not table_ids:
+#         return []
+#
+#     occupancy_by_table_hour: Dict[str, Dict[int, List[int]]] = defaultdict(lambda: defaultdict(list))
+#     sound_by_table_hour: Dict[str, Dict[int, List[float]]] = defaultdict(lambda: defaultdict(list))
+#
+#     for row in recent_rows:
+#         timestamp = parse_timestamp(row["timestamp"])
+#         occupancy_by_table_hour[row["table_id"]][timestamp.hour].append(int(row["occupied"]))
+#         if row["sound"] is not None:
+#             sound_by_table_hour[row["table_id"]][timestamp.hour].append(float(row["sound"]))
+#
+#     predictions: List[Dict[str, Any]] = []
+#     current_time = utc_now().replace(minute=0, second=0, microsecond=0)
+#
+#     for hour_offset in range(1, 7):
+#         prediction_time = current_time + timedelta(hours=hour_offset)
+#         prediction_hour = prediction_time.hour
+#
+#         for table_id in table_ids:
+#             latest_state = latest_states.get(table_id)
+#             hour_occupancy = occupancy_by_table_hour[table_id].get(prediction_hour, [])
+#             hour_sound = sound_by_table_hour[table_id].get(prediction_hour, [])
+#
+#             if hour_occupancy:
+#                 occupancy_probability = sum(hour_occupancy) / len(hour_occupancy)
+#             elif latest_state is not None:
+#                 occupancy_probability = 1.0 if latest_state["occupied"] else 0.0
+#             else:
+#                 occupancy_probability = 0.0
+#
+#             if hour_sound:
+#                 predicted_sound = sum(hour_sound) / len(hour_sound)
+#             elif latest_state is not None and latest_state["sound"] is not None:
+#                 predicted_sound = float(latest_state["sound"])
+#             else:
+#                 predicted_sound = 0.0
+#
+#             predictions.append(
+#                 {
+#                     "table_id": table_id,
+#                     "timestamp": prediction_time.isoformat(),
+#                     "occupied_probability": round(occupancy_probability, 3),
+#                     "predicted_occupied": occupancy_probability >= 0.5,
+#                     "predicted_sound": round(predicted_sound, 2),
+#                 }
+#             )
+#
+#     return predictions
 
 
 def handle_incoming_event(payload: Dict[str, Any], topic: str) -> Dict[str, Any]:
@@ -340,10 +341,11 @@ def get_sound_history() -> Any:
     return jsonify(fetch_sound_history_last_30_minutes())
 
 
-@app.route("/api/predict/next6", methods=["GET"])
-def get_next_6_predictions() -> Any:
-    """Return the next six hourly baseline occupancy predictions."""
-    return jsonify(build_next_6_hour_predictions())
+# ML pipeline removed for this project.
+# @app.route("/api/predict/next6", methods=["GET"])
+# def get_next_6_predictions() -> Any:
+#     """Return the next six hourly baseline occupancy predictions."""
+#     return jsonify(build_next_6_hour_predictions())
 
 
 @socketio.on("connect")
@@ -355,4 +357,4 @@ def handle_socket_connect() -> None:
 if __name__ == "__main__":
     init_db()
     start_mqtt_subscriber()
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=8080, debug=True)

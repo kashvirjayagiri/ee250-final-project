@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OccupiQ Dashboard</title>
+    <title>BrewView Dashboard</title>
     <style>
         :root {
             --bg: #f7f2ea;
@@ -51,8 +51,7 @@
 
         .topbar,
         .metrics,
-        .floor-map,
-        .prediction-grid {
+        .floor-map {
             display: grid;
             gap: 16px;
         }
@@ -236,6 +235,7 @@
             padding-left: 48px;
         }
 
+        /* ML/prediction dashboard styles removed for this project.
         .prediction-grid {
             grid-template-columns: repeat(6, minmax(0, 1fr));
         }
@@ -276,6 +276,7 @@
             color: var(--muted);
             text-align: center;
         }
+        */
 
         .empty-state {
             padding: 18px;
@@ -287,8 +288,7 @@
 
         @media (max-width: 920px) {
             .metrics,
-            .floor-map,
-            .prediction-grid {
+            .floor-map {
                 grid-template-columns: 1fr;
             }
 
@@ -314,7 +314,7 @@
     <main class="shell">
         <header class="topbar">
             <div class="brand">
-                <h1>OccupiQ</h1>
+                <h1>BrewView</h1>
                 <p>Cafe floor live dashboard</p>
             </div>
             <div class="live-pill">Live</div>
@@ -353,11 +353,13 @@
             </div>
         </section>
 
+        <!-- ML/prediction panel removed for this project.
         <section class="panel">
             <p class="section-label">Predicted busyness</p>
             <h3 class="section-title">Next 6 hours</h3>
             <div class="prediction-grid" id="predictionGrid"></div>
         </section>
+        -->
     </main>
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
@@ -370,7 +372,7 @@
         const floorMap = document.getElementById("floorMap");
         const soundChart = document.getElementById("soundChart");
         const chartTimes = document.getElementById("chartTimes");
-        const predictionGrid = document.getElementById("predictionGrid");
+        // const predictionGrid = document.getElementById("predictionGrid");
 
         const SOUND_CHART_HEIGHT = 360;
         const SOUND_CHART_WIDTH = 1080;
@@ -578,6 +580,7 @@
                 .join("");
         }
 
+        /*
         function predictionTone(probability) {
             if (probability < 0.45) {
                 return { background: "var(--vacant-bg)", fill: "var(--vacant-accent)" };
@@ -631,6 +634,7 @@
                 `;
             }).join("");
         }
+        */
 
         async function fetchJson(url) {
             const response = await fetch(url, { cache: "no-store" });
@@ -642,16 +646,14 @@
 
         async function refreshDashboard() {
             try {
-                const [current, history, predictions] = await Promise.all([
+                const [current, history] = await Promise.all([
                     fetchJson("/api/current"),
                     fetchJson("/api/sound_history"),
-                    fetchJson("/api/predict/next6"),
                 ]);
 
                 renderMetrics(current, history);
                 renderFloorMap(current);
                 renderSoundChart(history);
-                renderPredictions(predictions);
             } catch (error) {
                 console.error(error);
             }
