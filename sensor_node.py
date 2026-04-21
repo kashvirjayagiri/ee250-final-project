@@ -27,7 +27,7 @@ GPIO.setup(args.trig, GPIO.OUT)
 GPIO.setup(args.echo, GPIO.IN)
 GPIO.output(args.trig, False)
 print(f"[{args.table_id}] Waiting for sensor to settle...")
-time.sleep(2) # lets HC-SR04 stabilize on startup
+time.sleep(1) # lets HC-SR04 stabilize on startup
 
 # MQTT setup
 client = mqtt.Client(client_id = f"sensor_{args.table_id}")
@@ -68,7 +68,10 @@ def get_sound():
     """Read GrovePi sound sensor. Returns 1 if above the threshold, 0 if quiet."""
     try:
         raw = grovepi.analogRead(SOUND_PORT)
-        return 1 if raw > SOUND_THRESHOLD else 0
+        if raw > SOUND_THRESHOLD:
+            return 1
+        else:
+            return 0
     except IOError:
         print(f"[{args.table_id}] Sound sensor read error")
         return 0
