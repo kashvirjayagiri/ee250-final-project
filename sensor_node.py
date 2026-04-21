@@ -1,8 +1,8 @@
 import time
 import json
 import argparse
-from datetime import datetime
 import RPi.GPIO as GPIO
+import grovepi
 import paho.mqtt.client as mqtt
 
 # Argument parsing
@@ -11,7 +11,6 @@ parser = argparse.ArgumentParser(description="BrewView physical sensor node")
 parser.add_argument("--table_id", required=True,    help="Table identifier (ex. table_1)")
 parser.add_argument("--trig", type=int, default=23, help="GPIO pin for HC-SR04 TRIG")
 parser.add_argument("--echo", type=int, default=24, help="GPIO pin for HC-SR04 ECHO")
-parser.add_argument("--sound", type=int, default=17, help="GPIO pin for KY-037 digital out")
 parser.add_argument("--broker", default="localhost", help="MQTT broker host")
 parser.add_argument("--port", type=int, default=1883)
 parser.add_argument("--interval", type=float, default=2.0, help="Publish interval in seconds")
@@ -19,11 +18,13 @@ args = parser.parse_args()
 
 TOPIC = f"brewview/{args.table_id}/raw"
 
+SOUND_PORT = 0
+SOUND_THRESHOLD = 400 #change
+
 # GPIO setup
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(args.trig, GPIO.OUT)
 GPIO.setup(args.echo, GPIO.IN)
-GPIO.setup(args.sound, GPIO.IN)
 GPIO.output(args.trig, False)
 print(f"[{args.table_id}] Waiting for sensor to settle...")
 time.sleep(2) # lets HC-SR04 stabilize on startup
@@ -64,8 +65,13 @@ def get_distance():
     return round(distance, 1)
 
 def get_sound():
-    """Read KY-037 digital ouput. Returns 1 is sound is detected, 0 if quiet."""
-    return GPIO.input(args.sound)
+    """Read GrovePi sound sensor. Returns 1 if above the threshold, 0 if quiet."""
+    try:
+        raw = grovepi.analogRead(SOUND_PORT)
+        return 1 if raw > SOUND_THRESHOLD else 0
+    except IOError:
+        print(f"[{args.table_id}] Sound sensor read error")
+        return 0
 
 try:
     while True:
