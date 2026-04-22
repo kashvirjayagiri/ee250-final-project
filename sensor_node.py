@@ -37,9 +37,9 @@ def get_distance():
 def get_threshold():
     try: 
         raw = grovepi.analogRead(POT_PORT)
-        # map 0-1023 to a useful threshold range, e.g. 30-100 cm
+        # map 0-1023 to a useful threshold range for occupancy, e.g. 30-100 cm 
         threshold = int(30 + (raw / 1023) * 70)
-        return threshold
+        return round(threshold / 5) * 5
     except IOError:
         print(f"[{args.table_id}] Potentiometer read error")
         return 60  # fallback to default
@@ -47,7 +47,7 @@ def get_threshold():
 try:
     while True:
         distance = get_distance()
-        sound = get_sound()
+        threshold = get_threshold()
 
         if distance is None:
             print(f"[{args.table_id}] Distance read timed out - skipping")
@@ -59,8 +59,6 @@ try:
             print(f"[{args.table_id}] Distance out of range ({distance} cm) - skipping")
             time.sleep(args.interval)
             continue
-
-        threshold = get_threshold()
 
         payload = json.dumps({
             "table": args.table_id,
