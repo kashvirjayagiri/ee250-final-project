@@ -47,7 +47,7 @@ def get_threshold():
 try:
     while True:
         distance = get_distance()
-        sound = get_sound()
+        threshold = get_threshold()
 
         if distance is None:
             print(f"[{args.table_id}] Distance read timed out - skipping")
