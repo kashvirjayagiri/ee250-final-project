@@ -12,6 +12,8 @@ STATUS_TOPIC_FMT = "brewview/{}/status"
 THRESHOLD_OCCUPIED = 60
 # above this means possibly vacant
 THRESHOLD_VACANT = 80
+# sound threshold
+SOUND_THRESHOLD = 300
 # EMA smoothing factor (20% of the new value comes from the fresh raw reading)
 ALPHA = 0.2
 # seconds of empty evidence in order to switch to vacant
@@ -32,6 +34,8 @@ state = defaultdict(fresh_state)
 def process(table_id, distance_cm, sound, timestamp):
     s = state[table_id]
     now = time.time()
+    is_quiet = sound < SOUND_THRESHOLD
+    is_noisy = sound >= SOUND_THRESHOLD
 
     # EMA filter - smooths out sensor noise
     s["smoothed_distance"] = ALPHA * distance_cm + (1-ALPHA) * s["smoothed_distance"]
@@ -44,7 +48,7 @@ def process(table_id, distance_cm, sound, timestamp):
         s["occupied"] = True
         s["vacant_since"] = None
     
-    elif dist > THRESHOLD_VACANT and sound == 0: #both sensors agree vacant
+    elif dist > THRESHOLD_VACANT and is_quiet: #both sensors agree vacant
         # start holdover timer if not started already
         if s["vacant_since"] is None:
             s["vacant_since"] = now
@@ -55,7 +59,7 @@ def process(table_id, distance_cm, sound, timestamp):
                 print(f" [{table_id}] Holdover elapsed - switching to VACANT")
             s["occupied"] = False
 
-    elif dist > THRESHOLD_VACANT and sound == 1:
+    elif dist > THRESHOLD_VACANT and is_noisy:
         # distance says vacant but sound says presence: hold state -> reset timer
         print(f" [{table_id}] Sound detected near threshold - holding state")
         s["vacant_since"] = None
