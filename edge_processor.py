@@ -37,7 +37,7 @@ def process(table_id, distance_cm, timestamp, threshold):
     smoothed_distance = s["smoothed_distance"]
 
     occupied_threshold = threshold
-    vacant_threshold = threshold + VACANT_MARGIN_CM
+    vacant_threshold = threshold + HYSTERESIS_GAP
 
     if s["occupied"]:
         if distance_cm >= vacant_threshold:
