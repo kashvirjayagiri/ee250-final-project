@@ -15,7 +15,7 @@ args = parser.parse_args()
 
 TOPIC = f"brewview/{args.table_id}/raw"
 
-SOUND_PORT = 0
+POT_PORT = 0
 ULTRASONIC_PORT = 4
 
 # MQTT setup
@@ -34,13 +34,15 @@ def get_distance():
         print(f"[{args.table_id}] Ultrasonic read error")
         return None
 
-def get_sound():
-    """Read GrovePi sound sensor. Returns 1 if above the threshold, 0 if quiet."""
-    try:
-        return grovepi.analogRead(SOUND_PORT)
+def get_threshold():
+    try: 
+        raw = grovepi.analogRead(POT_PORT)
+        # map 0-1023 to a useful threshold range, e.g. 30-100 cm
+        threshold = int(30 + (raw / 1023) * 70)
+        return threshold
     except IOError:
-        print(f"[{args.table_id}] Sound sensor read error")
-        return 0
+        print(f"[{args.table_id}] Potentiometer read error")
+        return 60  # fallback to default
 
 try:
     while True:
@@ -58,15 +60,17 @@ try:
             time.sleep(args.interval)
             continue
 
+        threshold = get_threshold()
+
         payload = json.dumps({
             "table": args.table_id,
             "distance_cm": distance,
-            "sound": sound,
+            "threshold": threshold,
             "timestamp": time.time()
         })
 
         client.publish(TOPIC, payload)
-        print(f"[{args.table_id}] dist={distance:6.1f} cm | sound={sound}")
+        print(f"[{args.table_id}] dist={distance:6.1f} cm | threshold={threshold} cm")
 
         time.sleep(args.interval)
 
