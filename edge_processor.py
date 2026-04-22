@@ -1,78 +1,78 @@
 import json
 import time
-import paho.mqtt.client as mqtt
 from collections import defaultdict
 
-BROKER_HOST      = "localhost"
-BROKER_PORT      = 1883
-RAW_TOPIC        = "brewview/+/raw"
+import paho.mqtt.client as mqtt
+
+
+BROKER_HOST = "localhost"
+BROKER_PORT = 1883
+RAW_TOPIC = "brewview/+/raw"
 STATUS_TOPIC_FMT = "brewview/{}/status"
 
-ALPHA            = 0.2
-HOLDOVER_SECONDS = 30
-HYSTERESIS_GAP   = 20
+ALPHA = 0.2
+HOLDOVER_SECONDS = 8
+VACANT_MARGIN_CM = 5
 
 
 def fresh_state():
     return {
         "smoothed_distance": 100.0,
-        "occupied":          False,
-        "vacant_since":      None,
-        "last_update":       None,
+        "occupied": False,
+        "vacant_since": None,
+        "last_update": None,
     }
+
 
 state = defaultdict(fresh_state)
 
 
 def process(table_id, distance_cm, timestamp, threshold):
-    s   = state[table_id]
+    s = state[table_id]
     now = time.time()
 
-    # EMA filter
     s["smoothed_distance"] = ALPHA * distance_cm + (1 - ALPHA) * s["smoothed_distance"]
-    s["last_update"]       = now
-    dist = s["smoothed_distance"]
+    s["last_update"] = now
+    smoothed_distance = s["smoothed_distance"]
 
-    # dynamic thresholds from potentiometer
     occupied_threshold = threshold
-    vacant_threshold   = threshold + HYSTERESIS_GAP
+    vacant_threshold = threshold + VACANT_MARGIN_CM
 
-    # hysteresis + holdover
-    if dist < occupied_threshold:
-        s["occupied"]     = True
+    if s["occupied"]:
+        if distance_cm >= vacant_threshold:
+            if s["vacant_since"] is None:
+                s["vacant_since"] = now
+                print(f"[{table_id}] Holdover timer started")
+            elif now - s["vacant_since"] >= HOLDOVER_SECONDS:
+                print(f"[{table_id}] Holdover elapsed - switching to VACANT")
+                s["occupied"] = False
+        else:
+            s["vacant_since"] = None
+    elif smoothed_distance <= occupied_threshold:
+        s["occupied"] = True
         s["vacant_since"] = None
-
-    elif dist > vacant_threshold:
-        if s["vacant_since"] is None:
-            s["vacant_since"] = now
-            print(f"  [{table_id}] Holdover timer started")
-        elif now - s["vacant_since"] >= HOLDOVER_SECONDS:
-            if s["occupied"]:
-                print(f"  [{table_id}] Holdover elapsed - switching to VACANT")
-            s["occupied"] = False
-
     else:
         s["vacant_since"] = None
 
     vacant_since_str = (
         f"+{round(now - s['vacant_since'])}s"
-        if s["vacant_since"] else "None"
+        if s["vacant_since"] is not None else "None"
     )
     print(
         f"[{table_id}] {'OCCUPIED' if s['occupied'] else 'VACANT  '} | "
         f"raw={distance_cm:6.1f} cm | "
-        f"smoothed={dist:6.1f} cm | "
+        f"smoothed={smoothed_distance:6.1f} cm | "
         f"threshold={threshold} cm | "
         f"vacant_since={vacant_since_str:>8}"
     )
 
     return {
-        "table":             table_id,
-        "occupied":          s["occupied"],
-        "distance_cm":       round(distance_cm, 1),
-        "smoothed_distance": round(dist, 1),
-        "threshold":         threshold,
-        "timestamp":         timestamp
+        "table": table_id,
+        "occupied": s["occupied"],
+        "distance_cm": round(distance_cm, 1),
+        "smoothed_distance": round(smoothed_distance, 1),
+        "threshold": threshold,
+        "timestamp": timestamp,
     }
 
 
@@ -86,16 +86,16 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     try:
-        data      = json.loads(msg.payload.decode())
-        table_id  = data["table"]
-        distance  = float(data["distance_cm"])
+        data = json.loads(msg.payload.decode())
+        table_id = data["table"]
+        distance = float(data["distance_cm"])
         timestamp = float(data["timestamp"])
         threshold = int(data.get("threshold", 60))
-    except (KeyError, ValueError, json.JSONDecodeError) as e:
-        print(f"[edge processor] Bad payload on {msg.topic}: {e}")
+    except (KeyError, ValueError, json.JSONDecodeError) as exc:
+        print(f"[edge processor] Bad payload on {msg.topic}: {exc}")
         return
 
-    result       = process(table_id, distance, timestamp, threshold)
+    result = process(table_id, distance, timestamp, threshold)
     status_topic = STATUS_TOPIC_FMT.format(table_id)
     client.publish(status_topic, json.dumps(result))
 
