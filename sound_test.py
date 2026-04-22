@@ -71,7 +71,7 @@ try:
         print(f"Distance (avg): {round(avg_dist,2) if avg_dist else 'N/A'} cm")
         print(f"Sound level   : {sound}")
 
-        time.sleep(0.5)
+        time.sleep(0.2)
 
 except KeyboardInterrupt:
     print("\nStopping...")

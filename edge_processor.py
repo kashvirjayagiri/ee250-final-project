@@ -10,9 +10,10 @@ BROKER_PORT = 1883
 RAW_TOPIC = "brewview/+/raw"
 STATUS_TOPIC_FMT = "brewview/{}/status"
 
-ALPHA = 0.2
-HOLDOVER_SECONDS = 8
-VACANT_MARGIN_CM = 5
+ALPHA            = 0.4
+# usually would be longer in real life but use 5 seconds for demo
+HOLDOVER_SECONDS = 5
+HYSTERESIS_GAP   = 20
 
 
 def fresh_state():
