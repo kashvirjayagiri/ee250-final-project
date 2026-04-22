@@ -17,6 +17,7 @@ TOPIC = f"brewview/{args.table_id}/raw"
 
 POT_PORT = 0
 ULTRASONIC_PORT = 4
+MAX_DISTANCE_CM = 300.0
 
 # MQTT setup
 client = mqtt.Client(client_id = f"sensor_{args.table_id}")
@@ -54,11 +55,9 @@ try:
             time.sleep(args.interval)
             continue
 
-        # create range and eliminate sensor noise (anything beyond 3m isn't important)
-        if distance > 300:
-            print(f"[{args.table_id}] Distance out of range ({distance} cm) - skipping")
-            time.sleep(args.interval)
-            continue
+        # Clamp empty-table readings to the max useful range so vacant updates still publish.
+        if distance > MAX_DISTANCE_CM:
+            distance = MAX_DISTANCE_CM
 
         payload = json.dumps({
             "table": args.table_id,
