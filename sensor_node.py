@@ -60,7 +60,7 @@ try:
             distance = MAX_DISTANCE_CM
 
         payload = json.dumps({
-            "table": args.table_id,
+            "table_id": args.table_id,
             "distance_cm": distance,
             "threshold": threshold,
             "timestamp": time.time()

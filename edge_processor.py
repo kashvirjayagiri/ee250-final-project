@@ -1,7 +1,6 @@
 import json
 import time
 from collections import defaultdict
-
 import paho.mqtt.client as mqtt
 
 
@@ -37,7 +36,7 @@ def process(table_id, distance_cm, timestamp, threshold):
     smoothed_distance = s["smoothed_distance"]
 
     occupied_threshold = threshold
-    vacant_threshold = threshold + VACANT_MARGIN_CM
+    vacant_threshold = threshold + HYSTERESIS_GAP
 
     if s["occupied"]:
         if distance_cm >= vacant_threshold:
@@ -68,7 +67,7 @@ def process(table_id, distance_cm, timestamp, threshold):
     )
 
     return {
-        "table": table_id,
+        "table_id": table_id,
         "occupied": s["occupied"],
         "distance_cm": round(distance_cm, 1),
         "smoothed_distance": round(smoothed_distance, 1),
