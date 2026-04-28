@@ -9,7 +9,7 @@ BROKER_PORT = 1883
 RAW_TOPIC = "brewview/+/raw"
 STATUS_TOPIC_FMT = "brewview/{}/status"
 
-ALPHA            = 0.4  # EMA smoothin factor--higher = reacts faster, less smoothing
+ALPHA            = 0.4  # EMA smoothing factor--higher = reacts faster, less smoothing
 HOLDOVER_SECONDS = 5    # seconds of empty evidence required before switching to vacant (shorter time used for demo)
 HYSTERESIS_GAP   = 20   # cm gap between occupied and vacant thresholds to prevent state flickering
 
