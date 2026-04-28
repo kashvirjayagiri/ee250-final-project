@@ -1,4 +1,4 @@
-**BrewView: Real-Time Cafe Occupancy Detection System**
+**BrewView: IoT Cafe Occupancy Detection System**
 
 Team Members:   
 Irene Kim  
@@ -110,12 +110,3 @@ Step 2: Open a browser and navigate to:
 | :---: | :---- |
 | flask-socketio |  WebSocket support for live dashboard updates |
 | paho-mqtt |  MQTT client for subscribing to RPi broker |
-
-**FILES**
-
-| sensor\_node.py | Sensor node service (reads ultrasonic ranger and potentiometer, publishes raw readings to RPi broker every 2 seconds via MQTT) |
-| :---: | ----- |
-| edge\_processor.py |  Edge processing service (subscribes to raw readings, applies hysteresis threshold and holdover timer logic, publishes processed occupancy events to RPi broker) |
-| server.py | Central analytics server (subscribes to processed events from RPi broker, stores events in SQLite database, serves REST API and live web dashboard) |
-| templates/index.html | Web dashboard (displays live floor map, occupancy metrics, and threshold readings via WebSocket updates) |
-
