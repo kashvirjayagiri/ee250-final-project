@@ -9,10 +9,9 @@ BROKER_PORT = 1883
 RAW_TOPIC = "brewview/+/raw"
 STATUS_TOPIC_FMT = "brewview/{}/status"
 
-ALPHA            = 0.4
-# usually would be longer in real life but use 5 seconds for demo
-HOLDOVER_SECONDS = 5
-HYSTERESIS_GAP   = 20
+ALPHA            = 0.4  # EMA smoothin factor--higher = reacts faster, less smoothing
+HOLDOVER_SECONDS = 5    # seconds of empty evidence required before switching to vacant (shorter time used for demo)
+HYSTERESIS_GAP   = 20   # cm gap between occupied and vacant thresholds to prevent state flickering
 
 
 def fresh_state():
@@ -31,10 +30,12 @@ def process(table_id, distance_cm, timestamp, threshold):
     s = state[table_id]
     now = time.time()
 
+    # EMA filter smooths out sudden erratic readings from the sensor
     s["smoothed_distance"] = ALPHA * distance_cm + (1 - ALPHA) * s["smoothed_distance"]
     s["last_update"] = now
     smoothed_distance = s["smoothed_distance"]
 
+    # thresholds set by the potentiometer
     occupied_threshold = threshold
     vacant_threshold = threshold + HYSTERESIS_GAP
 
@@ -87,7 +88,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode())
-        table_id = data["table"]
+        table_id = data["table_id"]
         distance = float(data["distance_cm"])
         timestamp = float(data["timestamp"])
         threshold = int(data.get("threshold", 60))

@@ -15,8 +15,8 @@ args = parser.parse_args()
 
 TOPIC = f"brewview/{args.table_id}/raw"
 
-POT_PORT = 0
-ULTRASONIC_PORT = 4
+POT_PORT = 0    # port A0 on grove shield
+ULTRASONIC_PORT = 4 # port D4 on grove shield
 MAX_DISTANCE_CM = 300.0
 
 # MQTT setup
@@ -55,7 +55,7 @@ try:
             time.sleep(args.interval)
             continue
 
-        # Clamp empty-table readings to the max useful range so vacant updates still publish.
+        # cap max distance at 300 and publish
         if distance > MAX_DISTANCE_CM:
             distance = MAX_DISTANCE_CM
 
