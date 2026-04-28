@@ -1,4 +1,4 @@
-BrewView: Real-Time Cafe Occupancy Detection System
+BrewView: IoT Cafe Occupancy Detection System
 
 
 Team Members: 
